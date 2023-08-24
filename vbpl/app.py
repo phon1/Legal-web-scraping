@@ -15,7 +15,7 @@ TIMEOUT_DELAY = 2  # Thời gian delay (giây) sau khi gặp timeout
 def save_to_json(data):
     with open('law.json', 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, ensure_ascii=False, indent=4)
-    print(f'Thêm data vào json:\nid = {data[-1]["id"]}, \ntitle = {data[-1]["title"]}, \ncontent = {data[-1]["content"]},\nlink = {data[-1]["link"]}')
+    print(f'\nThêm data vào json:\nid = {data[-1]["id"]}, \ntitle = {data[-1]["title"]}, \ncontent = {data[-1]["content"]},\nlink = {data[-1]["link"]}')
 
 def update_json_data(data, id, title, content, link):
     for entry in data:
@@ -71,8 +71,9 @@ def Law_recursion(path):
             except AttributeError:
                 content = ""
 
-            if not title or not content:
+            if not title :
                 time.sleep(2)
+                print (f'\nAPI die at: ID = {id}, Link = {link}')
                 return Law_recursion(path)
 
             entry = {
@@ -85,7 +86,6 @@ def Law_recursion(path):
             if id_law == 1:
                 json_data = [entry]
                 save_to_json(json_data)
-                print("Data đã được cập nhật vào JSON.")
             else:
                 with open("law.json", "r", encoding="utf-8") as json_file:
                     try:
