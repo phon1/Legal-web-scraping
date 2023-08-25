@@ -4,6 +4,7 @@ import time
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import requests
+import threading
 
 storage = set()
 storeValue = set()
@@ -25,6 +26,81 @@ def update_json_data(data, id, title, content, link):
             entry['link'] = link
             return True
     return False
+
+def URL_first_crawl():
+    global id_law
+    global storage
+    global storeValue
+
+    path = "/Pages/chitiethoidap.aspx?ItemID=87573"
+    storage.add(path)
+    storeValue.add(path)
+
+    URL = 'https://vbpl.vn' + path
+
+    retries = 0
+    while retries < MAX_RETRIES:
+        try:
+            response = requests.get(URL, timeout=3)
+            response.raise_for_status()
+            html_content = response.text
+
+            soup = BeautifulSoup(html_content, "html.parser")
+            box_traloi = soup.find_all("div", class_="box_traloi")
+
+            id = id_law
+            link = 'https://vbpl.vn' + path
+
+            title_p = box_traloi[0].find("p", class_="title")
+            title = title_p.find_next("p").get_text(strip=True) if title_p else None
+
+            if title is None or title.strip() == '':
+                retries += 1
+                time.sleep(TIMEOUT_DELAY)
+                print(f'Retrying due to empty title. Retry attempt: {retries}')
+                continue
+
+            try:
+                content_non_p = box_traloi[1].find("p", class_=None)
+                if content_non_p:
+                    send_date_tag = box_traloi[1].find("p", class_="send_date")
+                    send_date_tag.extract()
+
+                    find_title_reply = box_traloi[1].find("p", class_="title_reply")
+                    find_title_reply.extract()
+
+                    content = box_traloi[1].get_text(separator="\n",strip=True)
+            except AttributeError:
+                content = ""
+            
+            entry = {
+                "id": id,
+                "title": title,
+                "content": content,
+                "link": link
+            }
+
+            id_law +=1
+
+            json_data = [entry]
+            save_to_json(json_data)
+
+            paths_list = []
+            links_other_question = soup.find_all("div", class_="news-other box-news")
+            for div in links_other_question:
+                links = div.find_all("a")
+                for link in links:
+                    path = link.get("href")
+                    paths_list.append(path)
+
+            storeValue.update(paths_list)
+
+        except requests.exceptions.RequestException as e:
+            print("Exception:", e)
+            print("Retrying in", TIMEOUT_DELAY, "seconds...")
+            retries += 1
+            time.sleep(TIMEOUT_DELAY)
+
 
 def Law_recursion(path):
     global id_law
@@ -83,20 +159,16 @@ def Law_recursion(path):
                 "link": link
             }
 
-            if id_law == 1:
-                json_data = [entry]
-                save_to_json(json_data)
-            else:
-                with open("law.json", "r", encoding="utf-8") as json_file:
-                    try:
-                        json_data = json.load(json_file)
-                    except json.JSONDecodeError:
-                        json_data = []
+            with open("law.json", "r", encoding="utf-8") as json_file:
+                try:
+                    json_data = json.load(json_file)
+                except json.JSONDecodeError:
+                    json_data = []
 
-                if not update_json_data(json_data, id, title, content, link):
-                    json_data.append(entry)
+            if not update_json_data(json_data, id, title, content, link):
+                json_data.append(entry)
 
-                save_to_json(json_data)
+            save_to_json(json_data)
 
             paths_list = []
             links_other_question = soup.find_all("div", class_="news-other box-news")
@@ -105,14 +177,11 @@ def Law_recursion(path):
                 for link in links:
                     path = link.get("href")
                     paths_list.append(path)
-            regex_pattern = re.compile(r'Pages/chitiethoidap\.aspx\?ItemID=\d+')
 
-            if id_law == 1:
-                storeValue.update(paths_list)
-            else:
-                for path_dif in paths_list:
-                    if path_dif not in storeValue:
-                        storeValue.add(path_dif)
+
+            for path_dif in paths_list:
+                if path_dif not in storeValue:
+                    storeValue.add(path_dif)
 
             path_new = next(iter(storeValue  - {path} - storage), None)
 
@@ -133,4 +202,13 @@ def Law_recursion(path):
 if __name__ == "__main__":
     storage.add("/Pages/chitiethoidap.aspx?ItemID=87573")
     storeValue.add("/Pages/chitiethoidap.aspx?ItemID=87573")
-    Law_recursion("/Pages/chitiethoidap.aspx?ItemID=87573")
+    urls_to_crawl = URL_first_crawl()
+
+    threads = []
+    for url in storeValue:
+        thread = threading.Thread(target=Law_recursion, args=(url,))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
