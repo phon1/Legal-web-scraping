@@ -40,7 +40,6 @@ def Law_loop(path):
     storage.add(path)
 
     URL = 'https://vbpl.vn' + path
-
     retries = 0
     while retries < MAX_RETRIES:
         try:
@@ -88,16 +87,38 @@ def Law_loop(path):
                 "link": link
             }
 
-            with open("law.json", "r", encoding="utf-8") as json_file:
+            # with open("law.json", "r", encoding="utf-8") as json_file:
+            #     try:
+            #         json_data = json.load(json_file)
+            #     except json.JSONDecodeError:
+            #         json_data = []
+
+            # if not update_json_data(json_data, id, title, content, link):
+            #     json_data.append(entry)
+
+            # save_to_json(json_data)
+
+            with json_lock:
                 try:
-                    json_data = json.load(json_file)
-                except json.JSONDecodeError:
-                    json_data = []
+                    with open('law.json', 'r+', encoding='utf-8') as json_file:
+                        try:
+                            json_data = json.load(json_file)
+                        except json.JSONDecodeError:
+                            json_data = []
 
-            if not update_json_data(json_data, id, title, content, link):
-                json_data.append(entry)
+                        if not update_json_data(json_data, id, title, content, link):
+                            json_data.append(entry)
 
-            save_to_json(json_data)
+                        json_file.seek(0)  # Di chuyển con trỏ về đầu tập tin
+                        json_file.truncate()  # Xóa nội dung tập tin
+
+                        json.dump(json_data, json_file, ensure_ascii=False, indent=4)
+                        json_file.flush()  # Đảm bảo dữ liệu được ghi ra tập tin ngay lập tức
+
+                    print(f'\nThêm data vào json:\nid = {entry["id"]}, \ntitle = {entry["title"]}, \ncontent = {entry["content"]},\nlink = {entry["link"]}')
+                except Exception as e:
+                    print("Error:", e)
+
 
             with storeValueLock:
                 links_other_question = soup.find_all("div", class_="news-other box-news")
@@ -107,6 +128,8 @@ def Law_loop(path):
                         new_path = link.get("href")
                         if new_path not in storeValue and new_path not in storage:
                             storeValue.add(new_path)
+                            print(f'new_path {new_path}')
+
 
             break
 
@@ -170,7 +193,7 @@ def URL_first_crawl(path):
 
             json_data = [entry]
             save_to_json(json_data)
-
+            count =0
             with storeValueLock:
                 paths_list = []
                 links_other_question = soup.find_all("div", class_="news-other box-news")
@@ -179,6 +202,8 @@ def URL_first_crawl(path):
                     for link in links:
                         path = link.get("href")
                         paths_list.append(path)
+                        print(f'\nURL_PATH {count}: {path}')
+                        count += 1
                 storeValue.update(paths_list)
 
             break
@@ -199,13 +224,21 @@ def main():
     URL_first_crawl(path)
 
     threads = []
+    count = 0
     while storeValue:
         path = storeValue.pop()
         if path not in storage:
-            Law_loop(path)
-            # thread = threading.Thread(target=Law_loop, args=(path,))
-            # thread.start()
+            count +=1
+            print(f"\nthread number: {count}----- poll : {path}")
+            # Law_loop(path)
+            thread = threading.Thread(target=Law_loop, args=(path,))
+            thread.start()
+            if len(storeValue) == 1:
+                print ('\n----------------sleep 20 second----------------------\n')
+                time.sleep(20)
+                
             # threads.append(thread)
+    
 
     # for thread in threads:
     #     thread.join()
