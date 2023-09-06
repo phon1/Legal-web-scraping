@@ -90,8 +90,9 @@ def scrape_url(url, semaphore):
             else:
                 # Increment retry count if no data is found
                 retry_count += 1
-                print(f"Retrying... (Retry {retry_count}/20)")
-                time.sleep(3)  # Wait for 3 seconds before retrying
+                print(f"Retrying... (Retry {retry_count}/20) at url {url} ")
+                
+                time.sleep(2)  # Wait for 3 seconds before retrying
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -116,17 +117,17 @@ base_url = "https://luatminhkhue.vn/tu-van-phap-luat.aspx"
 
 # Tạo danh sách URL cần duyệt
 # urls = [f"{base_url}?page={page}" for page in range(1, 2600)]
-urls = [f"{base_url}?page={page}" for page in range(130, 200)]
+urls = [f"{base_url}?page={page}" for page in range(180, 200)]
 
 
 # Khởi tạo danh sách để lưu thông tin
 data = []
 
 # ID ban đầu
-id_counter = 549
+id_counter = 890
 
 # Giới hạn số lượng luồng tối đa là 3
-max_threads = 5
+max_threads = 2
 semaphore = threading.Semaphore(max_threads)
 
 # Sử dụng threading để thực thi đa luồng
