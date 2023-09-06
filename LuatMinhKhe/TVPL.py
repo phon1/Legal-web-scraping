@@ -4,6 +4,7 @@ from newspaper import Article
 import os
 import json
 import threading
+import time
 
 error_links = []
 
@@ -21,68 +22,76 @@ def is_link_duplicate(link):
 def scrape_url(url, semaphore):
     global id_counter
     driver = webdriver.Chrome()
+    retry_count = 0
 
     try:
         print('--------------------------------------------------------------------------')
         print(url)
-        driver.get(url)
+        while retry_count < 20:
+            driver.get(url)
 
-        # Tìm element chứa danh sách tin tức
-        list_news_element = driver.find_element(By.CLASS_NAME, "list-news")
+            # Tìm element chứa danh sách tin tức
+            list_news_element = driver.find_element(By.CLASS_NAME, "list-news")
 
-        # Tìm danh sách các tin tức trong element trên
-        item_news_elements = list_news_element.find_elements(By.CLASS_NAME, "item-news")
+            # Tìm danh sách các tin tức trong element trên
+            item_news_elements = list_news_element.find_elements(By.CLASS_NAME, "item-news")
 
-        # Duyệt qua từng tin tức và trích xuất thông tin
-        for item_news in item_news_elements:
-            h2_element = item_news.find_element(By.TAG_NAME, "h2")
-            a_element = h2_element.find_element(By.TAG_NAME, "a")
-            link = a_element.get_attribute("href")
+            # Duyệt qua từng tin tức và trích xuất thông tin
+            for item_news in item_news_elements:
+                h2_element = item_news.find_element(By.TAG_NAME, "h2")
+                a_element = h2_element.find_element(By.TAG_NAME, "a")
+                link = a_element.get_attribute("href")
 
-            if is_link_duplicate(link):
-                print(f"Skipping duplicate link: {link}")
-                continue
+                if is_link_duplicate(link):
+                    print(f"Skipping duplicate link: {link}")
+                    continue
 
-            driverInfo = webdriver.Chrome()
+                driverInfo = webdriver.Chrome()
 
-            # Sử dụng newspaper3k để trích xuất thông tin
-            driverInfo.get(link)
-            article = Article(link)
-            article.set_html(driverInfo.page_source)
-            article.parse()
+                # Sử dụng newspaper3k để trích xuất thông tin
+                driverInfo.get(link)
+                article = Article(link)
+                article.set_html(driverInfo.page_source)
+                article.parse()
 
-            # Lấy tiêu đề và nội dung bài viết
-            title = article.title
+                # Lấy tiêu đề và nội dung bài viết
+                title = article.title
 
-            # Xóa các đoạn văn bản không phù hợp
-            paragraphs = article.text.split('\n')
-            filtered_paragraphs = []
-            for paragraph in paragraphs:
-                if '>>' not in paragraph and '19006162' not in paragraph and '1900 6162' not in paragraph and '1900.6162' not in paragraph:
-                    filtered_paragraphs.append(paragraph)
+                # Xóa các đoạn văn bản không phù hợp
+                paragraphs = article.text.split('\n')
+                filtered_paragraphs = []
+                for paragraph in paragraphs:
+                    if '>>' not in paragraph and '19006162' not in paragraph and '1900 6162' not in paragraph and '1900.6162' not in paragraph:
+                        filtered_paragraphs.append(paragraph)
 
-            # Ghi nội dung đã lọc vào biến text
-            text = '\n'.join(filtered_paragraphs)
+                # Ghi nội dung đã lọc vào biến text
+                text = '\n'.join(filtered_paragraphs)
 
-            # Tạo một mục dữ liệu mới
-            entry = {
-                "id": id_counter,
-                "link": link,
-                "title": title,
-                "text": text
-            }
+                # Tạo một mục dữ liệu mới
+                entry = {
+                    "id": id_counter,
+                    "link": link,
+                    "title": title,
+                    "text": text
+                }
 
-            # Tăng ID cho lần lặp tiếp theo
-            id_counter += 1
+                # Tăng ID cho lần lặp tiếp theo
+                id_counter += 1
 
-            # Lưu dữ liệu vào danh sách data
-            data.append(entry)
+                # Lưu dữ liệu vào danh sách data
+                data.append(entry)
 
-            # Save the entire list of data to the JSON file
-            with open("TuVanPhapLuatMinhKhe.json", "w", encoding="utf-8") as json_file:
-                json.dump(data, json_file, ensure_ascii=False, indent=4)
+                # Save the entire list of data to the JSON file
+                with open("TuVanPhapLuatMinhKhe.json", "w", encoding="utf-8") as json_file:
+                    json.dump(data, json_file, ensure_ascii=False, indent=4)
 
-            print(f'\nid: {id_counter}\n link: {link}\n')
+                print(f'\nid: {id_counter}\n link: {link}\n')
+                break  # Exit the retry loop if successful
+            else:
+                # Increment retry count if no data is found
+                retry_count += 1
+                print(f"Retrying... (Retry {retry_count}/20)")
+                time.sleep(3)  # Wait for 3 seconds before retrying
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -107,18 +116,17 @@ base_url = "https://luatminhkhue.vn/tu-van-phap-luat.aspx"
 
 # Tạo danh sách URL cần duyệt
 # urls = [f"{base_url}?page={page}" for page in range(1, 2600)]
-urls = [f"{base_url}?page={page}" for page in range(2, 5)]
+urls = [f"{base_url}?page={page}" for page in range(130, 200)]
 
-# urls = [f"{base_url}?page={page}" for page in range(7, 20)]
 
 # Khởi tạo danh sách để lưu thông tin
 data = []
 
 # ID ban đầu
-id_counter = 23
+id_counter = 549
 
 # Giới hạn số lượng luồng tối đa là 3
-max_threads = 3
+max_threads = 5
 semaphore = threading.Semaphore(max_threads)
 
 # Sử dụng threading để thực thi đa luồng
