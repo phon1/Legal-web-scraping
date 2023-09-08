@@ -117,17 +117,17 @@ base_url = "https://luatminhkhue.vn/tu-van-phap-luat.aspx"
 
 # Tạo danh sách URL cần duyệt
 # urls = [f"{base_url}?page={page}" for page in range(1, 2600)]
-urls = [f"{base_url}?page={page}" for page in range(180, 200)]
+urls = [f"{base_url}?page={page}" for page in range(1, 2600)]
 
 
 # Khởi tạo danh sách để lưu thông tin
 data = []
 
 # ID ban đầu
-id_counter = 890
+id_counter = 1
 
 # Giới hạn số lượng luồng tối đa là 3
-max_threads = 2
+max_threads = 4
 semaphore = threading.Semaphore(max_threads)
 
 # Sử dụng threading để thực thi đa luồng
