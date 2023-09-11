@@ -127,12 +127,12 @@ data = []
 id_counter = 1
 
 # Giới hạn số lượng luồng tối đa là 3
-max_threads = 1
+max_threads = 4
 semaphore = threading.Semaphore(max_threads)
 
 # Sử dụng threading để thực thi đa luồng
 threads = []
-dem = 1
+dem = 4
 
 # Check if the JSON file already exists
 if os.path.exists("TuDienPhapLuatMinhKhe.json"):
