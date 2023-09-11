@@ -100,7 +100,7 @@ def scrape_url(url, semaphore):
         error_links.append(link)
         
         # Lưu danh sách các URL gây lỗi vào tệp JSON ngay sau khi có lỗi
-        with open("error_links.json", "w", encoding="utf-8") as error_file:
+        with open("error_links_TuVanPhapLuatMinhKhe.json.json", "w", encoding="utf-8") as error_file:
             json.dump(error_links, error_file, ensure_ascii=False, indent=4)
 
     finally:
