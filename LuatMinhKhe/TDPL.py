@@ -100,7 +100,7 @@ def scrape_url(url, semaphore):
         error_links.append(link)
         
         # Lưu danh sách các URL gây lỗi vào tệp JSON ngay sau khi có lỗi
-        with open("error_links.json", "w", encoding="utf-8") as error_file:
+        with open("error_links_TuDienPhapLuatMinhKhe.json", "w", encoding="utf-8") as error_file:
             json.dump(error_links, error_file, ensure_ascii=False, indent=4)
 
     finally:
@@ -127,7 +127,7 @@ data = []
 id_counter = 1
 
 # Giới hạn số lượng luồng tối đa là 3
-max_threads = 4
+max_threads = 1
 semaphore = threading.Semaphore(max_threads)
 
 # Sử dụng threading để thực thi đa luồng
